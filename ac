@@ -1,0 +1,80 @@
+#! /bin/bash
+
+usage() {
+  cat << USAGE
+usage: add-commit <commit message> [option]
+
+      -h                        display help message
+      -p <repo names>           comma separated (without blanks) repo names if you want to push to multiple repos
+
+USAGE
+}
+
+push() {
+  if [ -z $1 ]; then
+    git push
+    return
+  fi
+
+
+  name=$1
+  is_string=$(echo $name | grep ,)
+  if [ -z $is_string ]; then
+    git push $name
+    return
+  fi
+
+  i=0
+
+  while true; do
+    ((i++))
+    name=$(echo $1 | cut -d , -f $i)
+    if [ -z $name ]; then
+      break
+    fi
+    git push $name
+  done
+}
+
+verbose=0
+
+while getopts "hv" option; do
+  case $option in
+    v)
+      verbose=1
+      ;;
+    h | *)
+      echo "This program is used to simplify git add, git commit and git push to be an all in one command"
+      usage
+      exit 0
+      ;;
+  esac
+done
+
+if [ $verbose == 1 ]; then
+  git add -v .
+else
+  git add .
+fi
+
+commit_message="$1"
+push_option="$2"
+repo_names="$3"
+
+if [ ! -z $(echo $commit_message | grep "\-v") ]; then
+  commit_message="$2"
+  push_option="$3"
+  repo_names="$4"
+fi
+
+if [ -z "$commit_message" ]; then
+  echo -e "[\e[0;31mERROR\e[0m] The commit message is missing ! Try including it and rerun the command."
+  usage
+  exit 1
+fi
+
+git commit -m "$commit_message"
+
+if [ ! -z $(echo $push_option | grep "\-p") ]; then
+  push $repo_names
+fi
